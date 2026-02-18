@@ -1,0 +1,18 @@
+{
+  "name": "kishan-diary",
+  "version": "1.0.0",
+  "description": "Mobile app for tracking farm work and implements",
+  "main": "backup-restore.js",
+  "scripts": {
+    "test": "node test-backup-restore.js"
+  },
+  "keywords": [
+    "farm",
+    "diary",
+    "backup",
+    "restore",
+    "agriculture"
+  ],
+  "author": "raj75165",
+  "license": "ISC"
+}
