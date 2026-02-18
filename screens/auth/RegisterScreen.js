@@ -73,6 +73,8 @@ export default function RegisterScreen({ navigation }) {
     }
 
     setLoading(true);
+    // NOTE: In production, password should be hashed before sending to backend
+    // This local implementation is for demonstration only
     const userData = {
       fullName: formData.fullName.trim(),
       email: formData.email.toLowerCase().trim(),
@@ -80,7 +82,7 @@ export default function RegisterScreen({ navigation }) {
       farmName: formData.farmName.trim() || 'My Farm',
       farmSize: formData.farmSize.trim(),
       location: formData.location.trim(),
-      password: formData.password,
+      password: formData.password, // SECURITY: Should be hashed in production
     };
 
     const result = await register(userData);

@@ -27,8 +27,14 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      // In a real app, this would make an API call
-      // For now, we'll store locally
+      // NOTE: This is a local-only implementation for demo purposes.
+      // In a production app:
+      // 1. Never store passwords in plain text
+      // 2. Use secure backend API for registration
+      // 3. Implement proper password hashing (bcrypt, argon2)
+      // 4. Use secure token-based authentication (JWT)
+      // 5. Store only authentication tokens, not passwords
+      
       const newUser = {
         id: Date.now().toString(),
         ...userData,
@@ -46,8 +52,14 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // In a real app, this would validate against a backend
-      // For now, we'll check if user exists in storage
+      // NOTE: This is a local-only implementation for demo purposes.
+      // In a production app:
+      // 1. Never compare passwords in plain text
+      // 2. Use secure backend API for authentication
+      // 3. Implement proper password hashing and comparison
+      // 4. Use secure token-based authentication (JWT)
+      // 5. Implement rate limiting and account lockout
+      
       const userData = await AsyncStorage.getItem('user');
       
       if (!userData) {
