@@ -69,6 +69,28 @@ npm run ios      # Run on iOS simulator (macOS only)
 npm run web      # Run in web browser
 ```
 
+### Building APK for Testing
+
+To generate an APK file for testing on Android devices:
+
+```bash
+# Install EAS CLI (first time only)
+npm install -g eas-cli
+
+# Login to Expo (first time only)
+eas login
+
+# Build APK for testing
+npm run build:apk
+
+# Check build status
+npm run build:status
+```
+
+The build process takes 10-20 minutes. Once complete, you'll receive a download link for the APK file.
+
+📱 **For detailed instructions**, see [APK_BUILD_GUIDE.md](APK_BUILD_GUIDE.md)
+
 ### Development
 
 The app follows a modular structure:
