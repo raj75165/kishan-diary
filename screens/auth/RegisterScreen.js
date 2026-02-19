@@ -9,9 +9,40 @@ import {
   ScrollView,
   Platform,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+
+// ── Reusable field component ──────────────────────────────────────────────────
+
+function Field({ label, required, icon, children }) {
+  return (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.label}>
+        {label}
+        {required && <Text style={styles.required}> *</Text>}
+      </Text>
+      <View style={styles.inputRow}>
+        <Ionicons name={icon} size={18} color="#2d5016" style={styles.fieldIcon} />
+        {children}
+      </View>
+    </View>
+  );
+}
+
+// ── Section header ────────────────────────────────────────────────────────────
+
+function SectionHeader({ icon, title }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={16} color="#2d5016" />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+}
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function RegisterScreen({ navigation }) {
   const [formData, setFormData] = useState({
@@ -27,258 +58,234 @@ export default function RegisterScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(null);
   const { register } = useAuth();
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const updateField = (field, value) => setFormData((prev) => ({ ...prev, [field]: value }));
 
-  const validatePhone = (phone) => {
-    const phoneRegex = /^[0-9]{10}$/;
-    return phoneRegex.test(phone.replace(/\D/g, ''));
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePhone = (phone) => /^[0-9]{10}$/.test(phone.replace(/\D/g, ''));
 
   const handleRegister = async () => {
-    // Validation
-    if (
-      !formData.fullName.trim() ||
-      !formData.email.trim() ||
-      !formData.phone.trim() ||
-      !formData.password.trim() ||
-      !formData.confirmPassword.trim()
-    ) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    const { fullName, email, phone, password, confirmPassword } = formData;
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields.');
       return;
     }
-
-    if (!validateEmail(formData.email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    if (!validateEmail(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
       return;
     }
-
-    if (!validatePhone(formData.phone)) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+    if (!validatePhone(phone)) {
+      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number.');
       return;
     }
-
-    if (formData.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    if (password.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters.');
       return;
     }
-
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match.');
       return;
     }
 
     setLoading(true);
-    // NOTE: In production, password should be hashed before sending to backend
-    // This local implementation is for demonstration only
-    const userData = {
-      fullName: formData.fullName.trim(),
-      email: formData.email.toLowerCase().trim(),
-      phone: formData.phone.trim(),
+    // NOTE: In production, password should be hashed before sending to backend.
+    const result = await register({
+      fullName: fullName.trim(),
+      email: email.toLowerCase().trim(),
+      phone: phone.trim(),
       farmName: formData.farmName.trim() || 'My Farm',
       farmSize: formData.farmSize.trim(),
       location: formData.location.trim(),
       password: formData.password, // SECURITY: Should be hashed in production
-    };
-
-    const result = await register(userData);
+    });
     setLoading(false);
 
     if (result.success) {
-      Alert.alert(
-        'Success!',
-        'Your account has been created successfully',
-        [{ text: 'OK' }]
-      );
-      // Navigation handled by App.js
+      Alert.alert('Account Created!', 'Welcome to Kishan Diary 🌾');
     } else {
-      Alert.alert('Registration Failed', result.error || 'An error occurred');
+      Alert.alert('Registration Failed', result.error || 'An error occurred.');
     }
   };
 
-  const updateField = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-  };
+  const inputStyle = (field) => [
+    styles.textInput,
+    focused === field && { color: '#1a1a1a' },
+  ];
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.logoIcon}>🌾</Text>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join Kishan Diary today</Text>
+      <StatusBar barStyle="light-content" backgroundColor="#1b3d0a" />
+
+      {/* Green header */}
+      <View style={styles.header}>
+        <View style={styles.logoCircle}>
+          <Text style={styles.logoEmoji}>🌾</Text>
+        </View>
+        <Text style={styles.headerTitle}>Create Account</Text>
+        <Text style={styles.headerSubtitle}>Set up your Kishan Diary profile</Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Personal Info ── */}
+        <View style={styles.card}>
+          <SectionHeader icon="person-circle-outline" title="Personal Information" />
+
+          <Field label="Full Name" required icon="person-outline">
+            <TextInput
+              style={inputStyle('fullName')}
+              value={formData.fullName}
+              onChangeText={(v) => updateField('fullName', v)}
+              placeholder="Your full name"
+              placeholderTextColor="#bbb"
+              autoCapitalize="words"
+              onFocus={() => setFocused('fullName')}
+              onBlur={() => setFocused(null)}
+            />
+          </Field>
+
+          <Field label="Email Address" required icon="mail-outline">
+            <TextInput
+              style={inputStyle('email')}
+              value={formData.email}
+              onChangeText={(v) => updateField('email', v)}
+              placeholder="you@example.com"
+              placeholderTextColor="#bbb"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              onFocus={() => setFocused('email')}
+              onBlur={() => setFocused(null)}
+            />
+          </Field>
+
+          <Field label="Phone Number" required icon="call-outline">
+            <TextInput
+              style={inputStyle('phone')}
+              value={formData.phone}
+              onChangeText={(v) => updateField('phone', v)}
+              placeholder="10-digit mobile number"
+              placeholderTextColor="#bbb"
+              keyboardType="phone-pad"
+              maxLength={10}
+              onFocus={() => setFocused('phone')}
+              onBlur={() => setFocused(null)}
+            />
+          </Field>
         </View>
 
-        <View style={styles.formContainer}>
-          {/* Full Name */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your full name"
-                value={formData.fullName}
-                onChangeText={(value) => updateField('fullName', value)}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
+        {/* ── Farm Info ── */}
+        <View style={[styles.card, { marginTop: 14 }]}>
+          <SectionHeader icon="leaf-outline" title="Farm Details (Optional)" />
 
-          {/* Email */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                value={formData.email}
-                onChangeText={(value) => updateField('email', value)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-            </View>
-          </View>
+          <Field label="Farm / Centre Name" icon="home-outline">
+            <TextInput
+              style={inputStyle('farmName')}
+              value={formData.farmName}
+              onChangeText={(v) => updateField('farmName', v)}
+              placeholder="e.g. Ram Singh Custom Hiring"
+              placeholderTextColor="#bbb"
+              autoCapitalize="words"
+              onFocus={() => setFocused('farmName')}
+              onBlur={() => setFocused(null)}
+            />
+          </Field>
 
-          {/* Phone */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Phone Number *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="call-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your phone number"
-                value={formData.phone}
-                onChangeText={(value) => updateField('phone', value)}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
-            </View>
-          </View>
+          <Field label="Total Farm Size" icon="resize-outline">
+            <TextInput
+              style={inputStyle('farmSize')}
+              value={formData.farmSize}
+              onChangeText={(v) => updateField('farmSize', v)}
+              placeholder="e.g. 25 acres"
+              placeholderTextColor="#bbb"
+              onFocus={() => setFocused('farmSize')}
+              onBlur={() => setFocused(null)}
+            />
+          </Field>
 
-          {/* Farm Name */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Farm Name (Optional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="home-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your farm name"
-                value={formData.farmName}
-                onChangeText={(value) => updateField('farmName', value)}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
+          <Field label="Village / District" icon="location-outline">
+            <TextInput
+              style={inputStyle('location')}
+              value={formData.location}
+              onChangeText={(v) => updateField('location', v)}
+              placeholder="e.g. Ludhiana, Punjab"
+              placeholderTextColor="#bbb"
+              autoCapitalize="words"
+              onFocus={() => setFocused('location')}
+              onBlur={() => setFocused(null)}
+            />
+          </Field>
+        </View>
 
-          {/* Farm Size */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Farm Size (Optional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="resize-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="e.g., 10 acres"
-                value={formData.farmSize}
-                onChangeText={(value) => updateField('farmSize', value)}
-              />
-            </View>
-          </View>
+        {/* ── Security ── */}
+        <View style={[styles.card, { marginTop: 14 }]}>
+          <SectionHeader icon="shield-checkmark-outline" title="Security" />
 
-          {/* Location */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Location (Optional)</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="location-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="City, State"
-                value={formData.location}
-                onChangeText={(value) => updateField('location', value)}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
-
-          {/* Password */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Create a password (min 6 characters)"
-                value={formData.password}
-                onChangeText={(value) => updateField('password', value)}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={20}
-                  color="#666"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Confirm Password */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm Password *</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Re-enter your password"
-                value={formData.confirmPassword}
-                onChangeText={(value) => updateField('confirmPassword', value)}
-                secureTextEntry={!showConfirmPassword}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeIcon}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                  size={20}
-                  color="#666"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Register Button */}
-          <TouchableOpacity
-            style={[styles.registerButton, loading && styles.registerButtonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            <Text style={styles.registerButtonText}>
-              {loading ? 'Creating Account...' : 'Register'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Login Link */}
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Sign in</Text>
+          <Field label="Password" required icon="lock-closed-outline">
+            <TextInput
+              style={[inputStyle('password'), { flex: 1 }]}
+              value={formData.password}
+              onChangeText={(v) => updateField('password', v)}
+              placeholder="Min. 6 characters"
+              placeholderTextColor="#bbb"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              onFocus={() => setFocused('password')}
+              onBlur={() => setFocused(null)}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+              <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#999" />
             </TouchableOpacity>
-          </View>
+          </Field>
+
+          <Field label="Confirm Password" required icon="lock-closed-outline">
+            <TextInput
+              style={[inputStyle('confirmPassword'), { flex: 1 }]}
+              value={formData.confirmPassword}
+              onChangeText={(v) => updateField('confirmPassword', v)}
+              placeholder="Re-enter password"
+              placeholderTextColor="#bbb"
+              secureTextEntry={!showConfirmPassword}
+              autoCapitalize="none"
+              onFocus={() => setFocused('confirmPassword')}
+              onBlur={() => setFocused(null)}
+            />
+            <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
+              <Ionicons name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#999" />
+            </TouchableOpacity>
+          </Field>
+        </View>
+
+        {/* Register button */}
+        <TouchableOpacity
+          style={[styles.registerBtn, loading && styles.registerBtnDisabled]}
+          onPress={handleRegister}
+          disabled={loading}
+          activeOpacity={0.85}
+        >
+          {loading ? (
+            <Text style={styles.registerBtnText}>Creating account…</Text>
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle-outline" size={22} color="#fff" />
+              <Text style={styles.registerBtnText}>Create Account</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.loginRow}>
+          <Text style={styles.loginText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.loginLink}>Sign In</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -286,105 +293,98 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-    paddingTop: 40,
-  },
+  container: { flex: 1, backgroundColor: '#f0f4f0' },
+
+  // Header
   header: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  logoIcon: {
-    fontSize: 50,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d5016',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-  },
-  formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-    marginBottom: 30,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    backgroundColor: '#f9f9f9',
-  },
-  inputIcon: {
-    marginLeft: 12,
-  },
-  input: {
-    flex: 1,
-    padding: 12,
-    fontSize: 16,
-    color: '#333',
-  },
-  eyeIcon: {
-    padding: 12,
-  },
-  registerButton: {
     backgroundColor: '#2d5016',
-    borderRadius: 10,
-    padding: 16,
+    paddingTop: 56,
+    paddingBottom: 36,
     alignItems: 'center',
-    marginTop: 8,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  logoCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  logoEmoji: { fontSize: 36 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  headerSubtitle: { fontSize: 13, color: '#c8e6c9' },
+
+  // Body
+  body: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 48 },
+
+  // Card
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 20,
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
-  registerButtonDisabled: {
-    backgroundColor: '#7a9d5f',
-  },
-  registerButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  loginContainer: {
+
+  // Section header
+  sectionHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 6,
+  },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#2d5016' },
+
+  // Field
+  fieldGroup: { marginBottom: 14 },
+  label: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6 },
+  required: { color: '#e53935' },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#e0e0e0',
+    borderRadius: 11,
+    backgroundColor: '#fafafa',
+    minHeight: 48,
+  },
+  fieldIcon: { marginLeft: 12, marginRight: 2 },
+  textInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 8, fontSize: 14, color: '#222' },
+  eyeBtn: { paddingHorizontal: 12 },
+
+  // Register button
+  registerBtn: {
+    backgroundColor: '#2d5016',
+    borderRadius: 14,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     marginTop: 20,
+    marginBottom: 14,
+    elevation: 4,
+    shadowColor: '#2d5016',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
-  loginText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  loginLink: {
-    color: '#2d5016',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  registerBtnDisabled: { backgroundColor: '#7a9d5f' },
+  registerBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 4 },
+  loginText: { fontSize: 14, color: '#888' },
+  loginLink: { fontSize: 14, color: '#2d5016', fontWeight: '700' },
 });
+

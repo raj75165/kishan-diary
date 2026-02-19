@@ -6,10 +6,19 @@ import { Ionicons } from '@expo/vector-icons';
 
 // ── Backup/Restore Modal ──────────────────────────────────────────────────────
 
-function BackupRestoreModal({ visible, onClose, exportBackup, importBackup }) {
+const CSV_SHEETS = [
+  { key: 'farmers', label: '👨‍🌾 Farmers', filename: 'farmers.csv' },
+  { key: 'workLogs', label: '📝 Work Logs', filename: 'work_logs.csv' },
+  { key: 'expenses', label: '💸 Expenses', filename: 'expenses.csv' },
+];
+
+function BackupRestoreModal({ visible, onClose, exportBackup, importBackup, exportCSV }) {
   const [restoreText, setRestoreText] = useState('');
-  const [tab, setTab] = useState('backup');
+  const [outerTab, setOuterTab] = useState('json'); // 'json' | 'csv' | 'restore'
+  const [csvSheet, setCsvSheet] = useState('farmers');
+
   const backupData = exportBackup();
+  const csvData = exportCSV(csvSheet);
 
   const handleRestore = async () => {
     if (!restoreText.trim()) {
@@ -42,7 +51,7 @@ function BackupRestoreModal({ visible, onClose, exportBackup, importBackup }) {
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalCard, { maxHeight: '85%' }]}>
+        <View style={[styles.modalCard, { maxHeight: '90%' }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Backup & Restore</Text>
             <TouchableOpacity onPress={onClose}>
@@ -50,30 +59,38 @@ function BackupRestoreModal({ visible, onClose, exportBackup, importBackup }) {
             </TouchableOpacity>
           </View>
 
-          {/* Tab bar */}
+          {/* Outer tab bar */}
           <View style={styles.tabBar}>
             <TouchableOpacity
-              style={[styles.tabBtn, tab === 'backup' && styles.tabBtnActive]}
-              onPress={() => setTab('backup')}
+              style={[styles.tabBtn, outerTab === 'json' && styles.tabBtnActive]}
+              onPress={() => setOuterTab('json')}
             >
-              <Text style={[styles.tabBtnText, tab === 'backup' && styles.tabBtnTextActive]}>
-                📤 Backup
+              <Text style={[styles.tabBtnText, outerTab === 'json' && styles.tabBtnTextActive]}>
+                📤 JSON
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tabBtn, tab === 'restore' && styles.tabBtnActive]}
-              onPress={() => setTab('restore')}
+              style={[styles.tabBtn, outerTab === 'csv' && styles.tabBtnActive]}
+              onPress={() => setOuterTab('csv')}
             >
-              <Text style={[styles.tabBtnText, tab === 'restore' && styles.tabBtnTextActive]}>
+              <Text style={[styles.tabBtnText, outerTab === 'csv' && styles.tabBtnTextActive]}>
+                📊 CSV
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, outerTab === 'restore' && styles.tabBtnActive]}
+              onPress={() => setOuterTab('restore')}
+            >
+              <Text style={[styles.tabBtnText, outerTab === 'restore' && styles.tabBtnTextActive]}>
                 📥 Restore
               </Text>
             </TouchableOpacity>
           </View>
 
-          {tab === 'backup' ? (
+          {outerTab === 'json' && (
             <ScrollView>
               <Text style={styles.backupInfo}>
-                Copy the JSON below and save it in a secure place (notes, email, etc.).
+                Copy the full JSON below. Use it to restore all data later.
               </Text>
               <TextInput
                 style={styles.backupTextArea}
@@ -83,10 +100,43 @@ function BackupRestoreModal({ visible, onClose, exportBackup, importBackup }) {
                 scrollEnabled
               />
             </ScrollView>
-          ) : (
+          )}
+
+          {outerTab === 'csv' && (
             <ScrollView>
               <Text style={styles.backupInfo}>
-                Paste your previously exported backup JSON below and tap Restore.
+                Select a sheet to view its CSV. Copy and paste into Excel or Google Sheets.
+              </Text>
+              {/* CSV sheet picker */}
+              <View style={styles.csvSheetRow}>
+                {CSV_SHEETS.map((s) => (
+                  <TouchableOpacity
+                    key={s.key}
+                    style={[styles.csvChip, csvSheet === s.key && styles.csvChipActive]}
+                    onPress={() => setCsvSheet(s.key)}
+                  >
+                    <Text
+                      style={[styles.csvChipText, csvSheet === s.key && styles.csvChipTextActive]}
+                    >
+                      {s.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={[styles.backupTextArea, { fontFamily: 'monospace', minHeight: 200 }]}
+                value={csvData}
+                multiline
+                editable={false}
+                scrollEnabled
+              />
+            </ScrollView>
+          )}
+
+          {outerTab === 'restore' && (
+            <ScrollView>
+              <Text style={styles.backupInfo}>
+                Paste your previously exported JSON backup below and tap Restore.
               </Text>
               <TextInput
                 style={[styles.backupTextArea, { color: '#1a1a1a' }]}
@@ -115,7 +165,7 @@ function BackupRestoreModal({ visible, onClose, exportBackup, importBackup }) {
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
-  const { farmers, workLogs, expenses, exportBackup, importBackup } = useAppData();
+  const { farmers, workLogs, expenses, exportBackup, importBackup, exportCSV } = useAppData();
   const [showBackup, setShowBackup] = useState(false);
 
   const handleLogout = () => {
@@ -250,6 +300,7 @@ export default function ProfileScreen() {
         onClose={() => setShowBackup(false)}
         exportBackup={exportBackup}
         importBackup={importBackup}
+        exportCSV={exportCSV}
       />
     </View>
   );
@@ -490,4 +541,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   closeBtnText: { color: '#555', fontSize: 14, fontWeight: '600' },
+
+  // CSV sheet chips
+  csvSheetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  csvChip: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#2d5016',
+    backgroundColor: '#fff',
+  },
+  csvChipActive: { backgroundColor: '#2d5016' },
+  csvChipText: { fontSize: 12, color: '#2d5016', fontWeight: '500' },
+  csvChipTextActive: { color: '#fff', fontWeight: '700' },
 });

@@ -201,6 +201,58 @@ export const AppDataProvider = ({ children }) => {
     }
   };
 
+  // ── CSV Export ────────────────────────────────────────────────────────────
+
+  const csvEscape = (val) => {
+    const s = val === null || val === undefined ? '' : String(val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const exportCSV = (sheet) => {
+    if (sheet === 'farmers') {
+      const header = 'Name,Phone,Village,Total Area (acres),Notes';
+      const rows = farmers.map((f) =>
+        [f.name, f.phone, f.village, f.totalArea, f.notes].map(csvEscape).join(',')
+      );
+      return [header, ...rows].join('\n');
+    }
+
+    if (sheet === 'workLogs') {
+      const header =
+        'Date,Farmer Name,Implement,Acres,Hours,Rate/Acre (Rs),Total Amount (Rs),Amount Paid (Rs),Balance Due (Rs),Notes';
+      const rows = workLogs.map((l) =>
+        [
+          l.date,
+          l.farmerName,
+          l.implementName,
+          l.acres || 0,
+          l.hours || 0,
+          l.ratePerAcre || 0,
+          l.totalAmount || 0,
+          l.amountPaid || 0,
+          (l.totalAmount || 0) - (l.amountPaid || 0),
+          l.notes,
+        ]
+          .map(csvEscape)
+          .join(',')
+      );
+      return [header, ...rows].join('\n');
+    }
+
+    if (sheet === 'expenses') {
+      const header = 'Date,Type,Amount (Rs),Description,Notes';
+      const rows = expenses.map((e) =>
+        [e.date, e.typeName, e.amount, e.description, e.notes].map(csvEscape).join(',')
+      );
+      return [header, ...rows].join('\n');
+    }
+
+    return '';
+  };
+
   // ── Backup / Restore ──────────────────────────────────────────────────────
 
   const exportBackup = () => {
@@ -281,6 +333,7 @@ export const AppDataProvider = ({ children }) => {
         updateImplement,
         exportBackup,
         importBackup,
+        exportCSV,
         getWorkLogsByFarmer,
         getWorkLogsByImplement,
         getFarmerBalance,
