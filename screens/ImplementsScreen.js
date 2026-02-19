@@ -93,6 +93,66 @@ function AddImplementModal({ visible, onClose, onSave }) {
   );
 }
 
+// ── Edit Rate Modal ───────────────────────────────────────────────────────────
+
+function EditRateModal({ visible, implement, onClose, onSave }) {
+  const [rate, setRate] = useState('');
+
+  // Sync with the current implement rate when the modal opens
+  React.useEffect(() => {
+    if (visible && implement) {
+      setRate(String(implement.defaultRatePerAcre || ''));
+    }
+  }, [visible, implement]);
+
+  const handleSave = () => {
+    const parsed = Number(rate);
+    if (!rate || isNaN(parsed) || parsed <= 0) {
+      Alert.alert('Validation', 'Please enter a valid rate greater than 0.');
+      return;
+    }
+    onSave(implement.id, { defaultRatePerAcre: parsed });
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalCard, { padding: 24 }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {implement?.icon} Edit Rate
+            </Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.editRateImplName}>{implement?.name}</Text>
+
+          <Text style={styles.fieldLabel}>Default Rate per Acre (₹)</Text>
+          <TextInput
+            style={styles.input}
+            value={rate}
+            onChangeText={setRate}
+            placeholder="e.g. 500"
+            keyboardType="numeric"
+            placeholderTextColor="#aaa"
+            autoFocus
+          />
+
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+            <Text style={styles.saveBtnText}>Update Rate</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+            <Text style={styles.closeBtnText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ── Implement Detail Modal ────────────────────────────────────────────────────
 
 function ImplementDetailModal({ visible, implement, onClose, appData }) {
@@ -165,14 +225,14 @@ function ImplementDetailModal({ visible, implement, onClose, appData }) {
 
 export default function ImplementsScreen() {
   const appData = useAppData();
-  const { implements: implList, addImplement, getWorkLogsByImplement } = appData;
+  const { implements: implList, addImplement, updateImplement, getWorkLogsByImplement } = appData;
 
   const [showAdd, setShowAdd] = useState(false);
   const [selectedImpl, setSelectedImpl] = useState(null);
+  const [editRateImpl, setEditRateImpl] = useState(null);
 
   const renderImplement = ({ item }) => {
     const logs = getWorkLogsByImplement(item.id);
-    const totalAcres = logs.reduce((s, l) => s + (Number(l.acres) || 0), 0);
     const totalRevenue = logs.reduce((s, l) => s + (l.totalAmount || 0), 0);
 
     return (
@@ -184,9 +244,21 @@ export default function ImplementsScreen() {
         <Text style={styles.implIcon}>{item.icon}</Text>
         <View style={styles.implInfo}>
           <Text style={styles.implName}>{item.name}</Text>
-          <Text style={styles.implRate}>
-            ₹{item.defaultRatePerAcre}/acre default rate
-          </Text>
+          <TouchableOpacity
+            style={styles.editRateBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              setEditRateImpl(item);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={`Edit default rate for ${item.name}`}
+            accessibilityRole="button"
+          >
+            <Text style={styles.implRate}>
+              ₹{item.defaultRatePerAcre}/acre
+            </Text>
+            <Ionicons name="pencil" size={11} color="#e65100" style={styles.pencilIcon} />
+          </TouchableOpacity>
         </View>
         <View style={styles.implStats}>
           <Text style={styles.implStatValue}>{logs.length}</Text>
@@ -214,7 +286,7 @@ export default function ImplementsScreen() {
               Tap an implement to view work history and statistics.
             </Text>
             <Text style={styles.headerText}>
-              Tap <Text style={{ fontWeight: '700' }}>+</Text> to add a custom implement.
+              Tap the <Text style={styles.bold}>rate</Text> (✏️) to update the default rate. Tap <Text style={styles.bold}>+</Text> to add a custom implement.
             </Text>
           </View>
         }
@@ -239,6 +311,13 @@ export default function ImplementsScreen() {
           appData={appData}
         />
       )}
+
+      <EditRateModal
+        visible={!!editRateImpl}
+        implement={editRateImpl}
+        onClose={() => setEditRateImpl(null)}
+        onSave={updateImplement}
+      />
     </View>
   );
 }
@@ -272,6 +351,10 @@ const styles = StyleSheet.create({
   implInfo: { flex: 1 },
   implName: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
   implRate: { fontSize: 12, color: '#888', marginTop: 2 },
+  editRateBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  pencilIcon: { marginLeft: 4 },
+  editRateImplName: { fontSize: 15, fontWeight: '600', color: '#333', marginBottom: 12 },
+  bold: { fontWeight: '700' },
   implStats: { alignItems: 'center', marginRight: 14 },
   implStatValue: { fontSize: 15, fontWeight: '700', color: '#2d5016' },
   implStatLabel: { fontSize: 10, color: '#999' },

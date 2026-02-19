@@ -32,10 +32,17 @@ function AddWorkLogModal({ visible, onClose, onSave, farmers, implements: implLi
   const selectedFarmer = farmers.find((f) => f.id === farmerId);
   const selectedImpl = implList.find((i) => i.id === implementId);
 
+  // Total = acres × rate  OR  hours × rate (whichever quantity is filled in)
   const totalAmount = useMemo(() => {
-    if (acres && ratePerAcre) return (Number(acres) * Number(ratePerAcre)).toFixed(0);
+    const rate = Number(ratePerAcre) || 0;
+    if (acres && rate) return (Number(acres) * rate).toFixed(0);
+    if (hours && rate) return (Number(hours) * rate).toFixed(0);
     return '0';
-  }, [acres, ratePerAcre]);
+  }, [acres, hours, ratePerAcre]);
+
+  // Label changes based on what quantity the user is filling
+  const rateLabel =
+    hours && !acres ? 'Rate per Hour (₹)' : 'Rate per Acre (₹)';
 
   const handleSelectImpl = (impl) => {
     setImplementId(impl.id);
@@ -154,7 +161,7 @@ function AddWorkLogModal({ visible, onClose, onSave, farmers, implements: implLi
               </View>
             </View>
 
-            <Text style={styles.fieldLabel}>Rate per Acre (₹)</Text>
+            <Text style={styles.fieldLabel}>{rateLabel}</Text>
             <TextInput
               style={styles.input}
               value={ratePerAcre}
