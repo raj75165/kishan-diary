@@ -4,12 +4,15 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AppDataProvider } from './context/AppDataContext';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
+import FarmersScreen from './screens/FarmersScreen';
 import ImplementsScreen from './screens/ImplementsScreen';
 import WorkLogScreen from './screens/WorkLogScreen';
+import ExpensesScreen from './screens/ExpensesScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
 // Import auth screens
@@ -61,10 +64,14 @@ function MainTabs() {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Farmers') {
+            iconName = focused ? 'people' : 'people-outline';
           } else if (route.name === 'Implements') {
             iconName = focused ? 'construct' : 'construct-outline';
           } else if (route.name === 'Work Log') {
             iconName = focused ? 'document-text' : 'document-text-outline';
+          } else if (route.name === 'Expenses') {
+            iconName = focused ? 'cash' : 'cash-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -90,30 +97,32 @@ function MainTabs() {
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{
-          title: 'Kishan Diary',
-        }}
+        options={{ title: 'Kishan Diary' }}
+      />
+      <Tab.Screen 
+        name="Farmers" 
+        component={FarmersScreen}
+        options={{ title: 'Farmers' }}
       />
       <Tab.Screen 
         name="Implements" 
         component={ImplementsScreen}
-        options={{
-          title: 'Farm Implements',
-        }}
+        options={{ title: 'Implements' }}
       />
       <Tab.Screen 
         name="Work Log" 
         component={WorkLogScreen}
-        options={{
-          title: 'Work Logs',
-        }}
+        options={{ title: 'Work Logs' }}
+      />
+      <Tab.Screen 
+        name="Expenses" 
+        component={ExpensesScreen}
+        options={{ title: 'Expenses' }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}
-        options={{
-          title: 'Profile',
-        }}
+        options={{ title: 'Profile' }}
       />
     </Tab.Navigator>
   );
@@ -140,7 +149,9 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppNavigator />
+      <AppDataProvider>
+        <AppNavigator />
+      </AppDataProvider>
     </AuthProvider>
   );
 }

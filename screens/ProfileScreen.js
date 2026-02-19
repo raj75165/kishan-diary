@@ -1,10 +1,172 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useAppData } from '../context/AppDataContext';
 import { Ionicons } from '@expo/vector-icons';
+
+// ── Backup/Restore Modal ──────────────────────────────────────────────────────
+
+const CSV_SHEETS = [
+  { key: 'farmers', label: '👨‍🌾 Farmers', filename: 'farmers.csv' },
+  { key: 'workLogs', label: '📝 Work Logs', filename: 'work_logs.csv' },
+  { key: 'expenses', label: '💸 Expenses', filename: 'expenses.csv' },
+];
+
+function BackupRestoreModal({ visible, onClose, exportBackup, importBackup, exportCSV }) {
+  const [restoreText, setRestoreText] = useState('');
+  const [outerTab, setOuterTab] = useState('json'); // 'json' | 'csv' | 'restore'
+  const [csvSheet, setCsvSheet] = useState('farmers');
+
+  const backupData = exportBackup();
+  const csvData = exportCSV(csvSheet);
+
+  const handleRestore = async () => {
+    if (!restoreText.trim()) {
+      Alert.alert('Error', 'Please paste your backup data.');
+      return;
+    }
+    Alert.alert(
+      'Confirm Restore',
+      'This will replace ALL existing data. Are you sure?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Restore',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await importBackup(restoreText.trim());
+            if (result.success) {
+              Alert.alert('Success', 'Data restored successfully.');
+              setRestoreText('');
+              onClose();
+            } else {
+              Alert.alert('Error', result.error || 'Invalid backup data.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalCard, { maxHeight: '90%' }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Backup & Restore</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Outer tab bar */}
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tabBtn, outerTab === 'json' && styles.tabBtnActive]}
+              onPress={() => setOuterTab('json')}
+            >
+              <Text style={[styles.tabBtnText, outerTab === 'json' && styles.tabBtnTextActive]}>
+                📤 JSON
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, outerTab === 'csv' && styles.tabBtnActive]}
+              onPress={() => setOuterTab('csv')}
+            >
+              <Text style={[styles.tabBtnText, outerTab === 'csv' && styles.tabBtnTextActive]}>
+                📊 CSV
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabBtn, outerTab === 'restore' && styles.tabBtnActive]}
+              onPress={() => setOuterTab('restore')}
+            >
+              <Text style={[styles.tabBtnText, outerTab === 'restore' && styles.tabBtnTextActive]}>
+                📥 Restore
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {outerTab === 'json' && (
+            <ScrollView>
+              <Text style={styles.backupInfo}>
+                Copy the full JSON below. Use it to restore all data later.
+              </Text>
+              <TextInput
+                style={styles.backupTextArea}
+                value={backupData}
+                multiline
+                editable={false}
+                scrollEnabled
+              />
+            </ScrollView>
+          )}
+
+          {outerTab === 'csv' && (
+            <ScrollView>
+              <Text style={styles.backupInfo}>
+                Select a sheet to view its CSV. Copy and paste into Excel or Google Sheets.
+              </Text>
+              {/* CSV sheet picker */}
+              <View style={styles.csvSheetRow}>
+                {CSV_SHEETS.map((s) => (
+                  <TouchableOpacity
+                    key={s.key}
+                    style={[styles.csvChip, csvSheet === s.key && styles.csvChipActive]}
+                    onPress={() => setCsvSheet(s.key)}
+                  >
+                    <Text
+                      style={[styles.csvChipText, csvSheet === s.key && styles.csvChipTextActive]}
+                    >
+                      {s.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={[styles.backupTextArea, { fontFamily: 'monospace', minHeight: 200 }]}
+                value={csvData}
+                multiline
+                editable={false}
+                scrollEnabled
+              />
+            </ScrollView>
+          )}
+
+          {outerTab === 'restore' && (
+            <ScrollView>
+              <Text style={styles.backupInfo}>
+                Paste your previously exported JSON backup below and tap Restore.
+              </Text>
+              <TextInput
+                style={[styles.backupTextArea, { color: '#1a1a1a' }]}
+                value={restoreText}
+                onChangeText={setRestoreText}
+                multiline
+                placeholder="Paste backup JSON here…"
+                placeholderTextColor="#aaa"
+              />
+              <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore}>
+                <Text style={styles.restoreBtnText}>Restore Data</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+            <Text style={styles.closeBtnText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { farmers, workLogs, expenses, exportBackup, importBackup, exportCSV } = useAppData();
+  const [showBackup, setShowBackup] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -23,9 +185,13 @@ export default function ProfileScreen() {
     );
   };
 
+  const totalRevenue = workLogs.reduce((s, l) => s + (l.totalAmount || 0), 0);
+  const totalExpensesAmt = expenses.reduce((s, e) => s + e.amount, 0);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>👨‍🌾</Text>
@@ -40,24 +206,43 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📊 Statistics</Text>
           <View style={styles.card}>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Total Implements:</Text>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statLabel}>Farmers Registered:</Text>
+              <Text style={styles.statValue}>{farmers.length}</Text>
             </View>
             <View style={styles.statRow}>
               <Text style={styles.statLabel}>Work Logs:</Text>
-              <Text style={styles.statValue}>0</Text>
+              <Text style={styles.statValue}>{workLogs.length}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Days Active:</Text>
-              <Text style={styles.statValue}>1</Text>
+              <Text style={styles.statLabel}>Total Revenue:</Text>
+              <Text style={styles.statValue}>₹{totalRevenue.toLocaleString()}</Text>
+            </View>
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Total Expenses:</Text>
+              <Text style={[styles.statValue, { color: '#d32f2f' }]}>
+                ₹{totalExpensesAmt.toLocaleString()}
+              </Text>
+            </View>
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Net Profit:</Text>
+              <Text
+                style={[
+                  styles.statValue,
+                  { color: totalRevenue - totalExpensesAmt >= 0 ? '#388e3c' : '#d32f2f' },
+                ]}
+              >
+                ₹{(totalRevenue - totalExpensesAmt).toLocaleString()}
+              </Text>
             </View>
           </View>
         </View>
 
+        {/* Contact info */}
         {user?.phone && (
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
@@ -79,34 +264,44 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Data management */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ Settings</Text>
-          <View style={styles.card}>
-            <Text style={styles.menuItem}>• Profile Settings</Text>
-            <Text style={styles.menuItem}>• Notification Preferences</Text>
-            <Text style={styles.menuItem}>• Data Backup & Sync</Text>
-            <Text style={styles.menuItem}>• Language & Region</Text>
-            <Text style={styles.menuItem}>• Privacy & Security</Text>
-          </View>
+          <Text style={styles.sectionTitle}>🗄️ Data Management</Text>
+          <TouchableOpacity
+            style={styles.actionRow}
+            onPress={() => setShowBackup(true)}
+          >
+            <View style={styles.actionLeft}>
+              <Ionicons name="cloud-upload-outline" size={22} color="#2d5016" />
+              <Text style={styles.actionText}>Backup & Restore Data</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#ccc" />
+          </TouchableOpacity>
         </View>
 
+        {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#fff" />
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
 
+        {/* About */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ℹ️ About</Text>
           <View style={styles.card}>
-            <Text style={styles.aboutText}>
-              Kishan Diary v1.0.0
-            </Text>
-            <Text style={styles.aboutText}>
-              Your complete farm management solution
-            </Text>
+            <Text style={styles.aboutText}>Kishan Diary v1.0.0</Text>
+            <Text style={styles.aboutText}>Your complete farm management solution</Text>
           </View>
         </View>
       </ScrollView>
+
+      <BackupRestoreModal
+        visible={showBackup}
+        onClose={() => setShowBackup(false)}
+        exportBackup={exportBackup}
+        importBackup={importBackup}
+        exportCSV={exportCSV}
+      />
     </View>
   );
 }
@@ -260,4 +455,104 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+
+  // Action row
+  actionRow: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+  },
+  actionLeft: { flexDirection: 'row', alignItems: 'center' },
+  actionText: { fontSize: 15, color: '#1a1a1a', marginLeft: 10, fontWeight: '500' },
+
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#1a1a1a' },
+
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    padding: 4,
+    marginBottom: 14,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabBtnActive: { backgroundColor: '#fff', elevation: 1 },
+  tabBtnText: { fontSize: 14, color: '#888', fontWeight: '500' },
+  tabBtnTextActive: { color: '#2d5016', fontWeight: '700' },
+
+  // Backup
+  backupInfo: { fontSize: 13, color: '#666', marginBottom: 10, lineHeight: 18 },
+  backupTextArea: {
+    backgroundColor: '#f7f7f7',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    padding: 12,
+    fontSize: 11,
+    color: '#555',
+    minHeight: 180,
+    fontFamily: 'monospace',
+  },
+  restoreBtn: {
+    backgroundColor: '#1565c0',
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  restoreBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  closeBtn: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  closeBtnText: { color: '#555', fontSize: 14, fontWeight: '600' },
+
+  // CSV sheet chips
+  csvSheetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  csvChip: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#2d5016',
+    backgroundColor: '#fff',
+  },
+  csvChipActive: { backgroundColor: '#2d5016' },
+  csvChipText: { fontSize: 12, color: '#2d5016', fontWeight: '500' },
+  csvChipTextActive: { color: '#fff', fontWeight: '700' },
 });
