@@ -8,6 +8,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // Import screens
 import HomeScreen from './screens/HomeScreen';
+import CropTrackingScreen from './screens/CropTrackingScreen';
 import ImplementsScreen from './screens/ImplementsScreen';
 import WorkLogScreen from './screens/WorkLogScreen';
 import ProfileScreen from './screens/ProfileScreen';
@@ -61,6 +62,8 @@ function MainTabs() {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Crops') {
+            iconName = focused ? 'leaf' : 'leaf-outline';
           } else if (route.name === 'Implements') {
             iconName = focused ? 'construct' : 'construct-outline';
           } else if (route.name === 'Work Log') {
@@ -92,6 +95,13 @@ function MainTabs() {
         component={HomeScreen}
         options={{
           title: 'Kishan Diary',
+        }}
+      />
+      <Tab.Screen 
+        name="Crops" 
+        component={CropTrackingScreen}
+        options={{
+          title: 'Crop Tracking',
         }}
       />
       <Tab.Screen 
