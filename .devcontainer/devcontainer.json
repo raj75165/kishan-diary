@@ -1,0 +1,23 @@
+{
+  "name": "Kishan Diary – APK Builder",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "onCreateCommand": "bash .devcontainer/setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "msjsdiag.vscode-react-native",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+  "remoteEnv": {
+    "NODE_ENV": "development"
+  },
+  "postStartCommand": "bash .devcontainer/welcome.sh",
+  "features": {}
+}
